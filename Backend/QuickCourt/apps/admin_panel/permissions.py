@@ -1,12 +1,11 @@
-from rest_framework import permissions
+from rest_framework.permissions import BasePermission
 
 
-class IsPlatformAdmin(permissions.BasePermission):
+class IsAdminUserCustom(BasePermission):
     """
-    Allow only users with role == 'admin' to access admin_panel endpoints.
+    Custom permission to allow only users with role 'admin'
     """
 
     def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and getattr(user, "role",
-                                                               None) == "admin")
+        return request.user.is_authenticated and getattr(request.user, "role",
+                                                         None) == "admin"
