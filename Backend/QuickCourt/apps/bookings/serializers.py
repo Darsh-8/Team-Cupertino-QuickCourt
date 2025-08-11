@@ -1,25 +1,40 @@
 from rest_framework import serializers
 
-from apps.facilities.models import Court, BlockedSlot, Schedule
+from apps.facilities.models import BlockedSlot, Schedule
 from .models import Booking
 
 
-class BookingSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+class BookingListSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
+    court_name = serializers.CharField(source="court.name", read_only=True)
+    facility_name = serializers.CharField(source="court.facility.name",
+                                          read_only=True)
 
     class Meta:
         model = Booking
-        fields = ["id", "user", "court", "date", "start_time", "end_time",
-                  "total_price", "status", "created_at", "metadata"]
+        fields = [
+            "id", "user", "user_email", "court", "court_name", "facility_name",
+            "date", "start_time", "end_time", "total_price", "status",
+            "metadata", "created_at"
+        ]
         read_only_fields = ["id", "user", "total_price", "status",
-                            "created_at"]
+                            "created_at", "user_email", "court_name",
+                            "facility_name"]
+
+    def get_user_email(self, obj):
+        try:
+            return obj.user.email
+        except Exception:
+            return None
+
+
+class BookingCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Booking
+        fields = ["court", "date", "start_time", "end_time", "metadata"]
 
     def validate(self, data):
-        """
-        Validate times, court exists and that booking falls within court operating hours,
-        and not in blocked slots or explicit schedule marked unavailable.
-        """
-        court: Court = data.get("court")
+        court = data.get("court")
         date = data.get("date")
         start_time = data.get("start_time")
         end_time = data.get("end_time")
@@ -28,37 +43,22 @@ class BookingSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "start_time must be before end_time")
 
-        # Operating hours check
+        # Operating hours check (defensive)
         if start_time < court.operating_start or end_time > court.operating_end:
             raise serializers.ValidationError(
-                "Booking time outside court operating hours")
+                "Booking times outside court operating hours")
 
-        # Blocked slots conflict
-        blocked = BlockedSlot.objects.filter(court=court, date=date).filter(
-            start_time__lt=end_time, end_time__gt=start_time
-        ).exists()
-        if blocked:
+        # Blocked slots
+        if BlockedSlot.objects.filter(court=court, date=date).filter(
+                start_time__lt=end_time, end_time__gt=start_time).exists():
             raise serializers.ValidationError(
                 "Requested slot is blocked for this court")
 
-        # Schedule override marking unavailable
-        schedule_conflict = Schedule.objects.filter(court=court, date=date,
-                                                    is_available=False).filter(
-            start_time__lt=end_time, end_time__gt=start_time
-        ).exists()
-        if schedule_conflict:
+        # Schedule override unavailable
+        if Schedule.objects.filter(court=court, date=date,
+                                   is_available=False).filter(
+                start_time__lt=end_time, end_time__gt=start_time).exists():
             raise serializers.ValidationError(
                 "Requested slot is unavailable as per schedule override")
 
         return data
-
-    def create(self, validated_data):
-        """
-        total_price calculation should consider DynamicPricing if available,
-        otherwise use court.price_per_hour * hours (simple calculation).
-        The actual booking creation with conflict prevention is handled in the view
-        inside a DB transaction to use select_for_update.
-        """
-        # NOTE: we won't create here in serializer for concurrency safety.
-        raise NotImplementedError(
-            "Use the BookingViewSet.create() method for transactional create")

@@ -13,7 +13,7 @@ class Review(models.Model):
     RATING_MAX = 5
 
     facility = models.ForeignKey(
-        "apps.facilities.Facility",
+        "facilities.Facility",
         on_delete=models.CASCADE,
         related_name="reviews"
     )

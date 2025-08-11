@@ -1,3 +1,10 @@
+# apps/facilities/admin.py
+"""
+Admin registrations for models defined in the facilities app.
+This file is the single place where AdminAction (audit log) is registered,
+which prevents AlreadyRegistered exceptions.
+"""
+
 from django.contrib import admin
 
 from .models import (
@@ -56,5 +63,10 @@ class ReportAdmin(admin.ModelAdmin):
 
 @admin.register(AdminAction)
 class AdminActionAdmin(admin.ModelAdmin):
+    """
+    Audit log for admin actions. Registered here once (facilities app).
+    Keep this registration here — do not re-register in other apps.
+    """
     list_display = ("id", "admin", "action_type", "created_at")
     readonly_fields = ("created_at",)
+    search_fields = ("action_type", "details", "admin__email")

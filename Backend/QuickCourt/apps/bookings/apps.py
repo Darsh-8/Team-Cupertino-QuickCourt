@@ -6,6 +6,7 @@ class BookingsConfig(AppConfig):
     name = "apps.bookings"
 
     def ready(self):
+        # Register signals
         try:
             import apps.bookings.signals  # noqa: F401
         except Exception:
