@@ -19,8 +19,14 @@ def generate_and_send_otp(identifier: str, user=None, purpose='signup',
                           length=6):
     code = _generate_code(length)
     expires_at = timezone.now() + timedelta(seconds=OTP_EXPIRY_SECONDS)
-    otp = OTP.objects.create(user=user, identifier=identifier, code=code,
-                             purpose=purpose, expires_at=expires_at)
+    otp = OTP.objects.create(
+        user=user,
+        identifier=identifier,
+        code=code,
+        purpose=purpose,
+        expires_at=timezone.now() + timedelta(seconds=OTP_EXPIRY_SECONDS)
+    )
+
     subject = f"[QuickCourt] Your OTP for {purpose}"
     message = f"Your OTP is: {code}. It expires in {OTP_EXPIRY_SECONDS // 60} minutes."
     from_email = getattr(settings, 'DEFAULT_FROM_EMAIL',

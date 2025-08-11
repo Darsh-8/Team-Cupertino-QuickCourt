@@ -15,7 +15,7 @@ router.register(r'admin/users', AdminUserManagementViewSet,
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='auth-register'),
     path('auth/verify-otp/', VerifyOTPView.as_view(), name='auth-verify-otp'),
-    path('auth/token/', CustomTokenObtainPairView.as_view(),
+    path('auth/login/', CustomTokenObtainPairView.as_view(),
          name='token_obtain_pair'),
     path('auth/token/refresh/', SlidingTokenRefreshView.as_view(),
          name='token_refresh'),

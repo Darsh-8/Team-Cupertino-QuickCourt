@@ -57,8 +57,12 @@ class OTP(models.Model):
             models.Index(fields=['user', 'purpose']),
         ]
 
+    # def is_valid(self):
+    #     return (not self.consumed) and (timezone.now() <= self.expires_at)
+
     def is_valid(self):
-        return (not self.consumed) and (timezone.now() <= self.expires_at)
+        # DEBUG: Ignore expiry check
+        return not self.consumed
 
     def mark_consumed(self):
         self.consumed = True

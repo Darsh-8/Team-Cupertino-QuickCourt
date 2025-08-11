@@ -1,9 +1,12 @@
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 
+from . import models
 from .filters import FacilityFilter, CourtFilter
 from .models import Facility, Amenity, Court, Schedule, BlockedSlot, \
     DynamicPricing, Report, AdminAction
@@ -22,9 +25,9 @@ class FacilityViewSet(viewsets.ModelViewSet):
     """
     /api/facilities/
     - list: approved facilities (admins can see all via filter)
-    - create: owner only (we enforce in create())
-    - retrieve/partial_update/destroy: owner or admin
-    - custom action: /{id}/courts/
+    - create: owner only
+    - retrieve/update/delete: owner or admin
+    - custom actions: approve/reject, list pending, list facility courts
     """
     queryset = Facility.objects.select_related("owner").prefetch_related(
         "amenities").all()
@@ -35,46 +38,43 @@ class FacilityViewSet(viewsets.ModelViewSet):
     ordering_fields = ["avg_rating", "created_at", "name"]
 
     def get_permissions(self):
-        if self.action in ["create"]:
-            return [IsAuthenticated()]
-        if self.action in ["partial_update", "update", "destroy", "approve",
-                           "reject"]:
-            return [IsAuthenticated(), IsFacilityOwnerOrAdmin()]
         if self.action in ["pending_list", "approve", "reject"]:
             return [IsAuthenticated(), IsAdminUser()]
+        if self.action in ["partial_update", "update", "destroy"]:
+            return [IsAuthenticated(), IsFacilityOwnerOrAdmin()]
+        if self.action in ["create"]:
+            return [IsAuthenticated()]
         return [AllowAny()]
 
     def get_serializer_class(self):
-        if self.action in ["list"]:
+        if self.action == "list":
             return FacilityListSerializer
-        if self.action in ["retrieve"]:
+        if self.action == "retrieve":
             return FacilityDetailSerializer
         return FacilityCreateUpdateSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
-        # Public listing: only approved facilities
         if self.request and not (
                 self.request.user.is_authenticated and getattr(
-                self.request.user, "role", None) == "admin"):
+            self.request.user, "role", None) == "admin"
+        ):
             qs = qs.filter(status="approved")
         return qs
 
     def perform_create(self, serializer):
-        # Allow only owners to create facility (user.role == 'owner')
         user = self.request.user
         if getattr(user, "role", None) != "owner":
-            # you might want to auto-upgrade or return a better error in UX
-            raise PermissionError(
+            raise PermissionDenied(
                 "Only facility owners can create facilities.")
-        serializer.save()
+        serializer.save(owner=user)
 
-    @action(detail=False, methods=["get"], url_path="pending",
-            permission_classes=[IsAuthenticated, IsAdminUser])
+    @action(detail=False, methods=["get"], url_path="pending")
     def pending_list(self, request):
         qs = Facility.objects.filter(status="pending")
         page = self.paginate_queryset(qs)
-        serializer = FacilityListSerializer(page or qs, many=bool(page),
+        serializer = FacilityListSerializer(page if page is not None else qs,
+                                            many=True,
                                             context={"request": request})
         return self.get_paginated_response(
             serializer.data) if page is not None else Response(serializer.data)
@@ -82,22 +82,27 @@ class FacilityViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["patch"], url_path="approve")
     def approve(self, request, pk=None):
         facility = self.get_object()
+        old_status = facility.status
         facility.status = "approved"
         facility.save()
-        # audit log
-        AdminAction.objects.create(admin=request.user,
-                                   action_type="facility_approval",
-                                   details=f"Approved facility {facility.id}")
+        AdminAction.objects.create(
+            admin=request.user,
+            action_type="facility_approval",
+            details=f"Changed status from {old_status} to approved for facility {facility.id}"
+        )
         return Response({"status": "approved"})
 
     @action(detail=True, methods=["patch"], url_path="reject")
     def reject(self, request, pk=None):
         facility = self.get_object()
+        old_status = facility.status
         facility.status = "rejected"
         facility.save()
-        AdminAction.objects.create(admin=request.user,
-                                   action_type="facility_rejection",
-                                   details=f"Rejected facility {facility.id}")
+        AdminAction.objects.create(
+            admin=request.user,
+            action_type="facility_rejection",
+            details=f"Changed status from {old_status} to rejected for facility {facility.id}"
+        )
         return Response({"status": "rejected"})
 
     @action(detail=True, methods=["get"], url_path="courts")
@@ -105,8 +110,8 @@ class FacilityViewSet(viewsets.ModelViewSet):
         facility = self.get_object()
         qs = facility.courts.all()
         page = self.paginate_queryset(qs)
-        serializer = CourtSerializer(page or qs, many=bool(page),
-                                     context={"request": request})
+        serializer = CourtSerializer(page if page is not None else qs,
+                                     many=True, context={"request": request})
         return self.get_paginated_response(
             serializer.data) if page is not None else Response(serializer.data)
 
@@ -115,36 +120,32 @@ class FacilityViewSet(viewsets.ModelViewSet):
 class AmenityViewSet(viewsets.ModelViewSet):
     queryset = Amenity.objects.all()
     serializer_class = AmenitySerializer
-    permission_classes = [
-        IsAuthenticated]  # restrict creation to authenticated (admins should manage amenity list)
+    permission_classes = [IsAuthenticated]  # admins should manage amenities
 
 
 # Court endpoints
 class CourtViewSet(viewsets.ModelViewSet):
     queryset = Court.objects.select_related("facility").all()
     serializer_class = CourtSerializer
-    permission_classes = [
-        IsAuthenticated | AllowAny]  # override via get_permissions
     filter_backends = [DjangoFilterBackend, filters.SearchFilter,
                        filters.OrderingFilter]
     filterset_class = CourtFilter
     search_fields = ["name", "sport_type"]
 
     def get_permissions(self):
-        if self.action in ["create"]:
+        if self.action == "create":
             return [IsAuthenticated()]
         if self.action in ["update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsFacilityOwnerOrAdmin()]
         return [AllowAny()]
 
     def perform_create(self, serializer):
-        # Ensure only facility owner can add court
         user = self.request.user
         facility = serializer.validated_data["facility"]
         if getattr(user, "role", None) == "admin" or facility.owner == user:
             serializer.save()
         else:
-            raise PermissionError(
+            raise PermissionDenied(
                 "Only facility owner or admin can add a court.")
 
 
@@ -152,7 +153,6 @@ class CourtViewSet(viewsets.ModelViewSet):
 class ScheduleViewSet(viewsets.ModelViewSet):
     queryset = Schedule.objects.select_related("court").all()
     serializer_class = ScheduleSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -164,7 +164,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 class BlockedSlotViewSet(viewsets.ModelViewSet):
     queryset = BlockedSlot.objects.select_related("court").all()
     serializer_class = BlockedSlotSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
@@ -172,24 +171,18 @@ class BlockedSlotViewSet(viewsets.ModelViewSet):
         return [AllowAny()]
 
 
-# Dynamic pricing simple CRUD & fetch
+# Dynamic pricing CRUD & fetch
 class DynamicPricingViewSet(viewsets.ModelViewSet):
     queryset = DynamicPricing.objects.select_related("court").all()
     serializer_class = DynamicPricingSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        # allow facility owners and admins to create/update pricing
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsFacilityOwnerOrAdmin()]
         return [AllowAny()]
 
     @action(detail=False, methods=["get"], url_path="active")
     def active_prices(self, request):
-        """
-        Return active dynamic prices for a given court/date query params.
-        e.g., ?court=1&date=2025-08-11
-        """
         court_id = request.query_params.get("court")
         date = request.query_params.get("date")
         qs = self.queryset
@@ -197,7 +190,6 @@ class DynamicPricingViewSet(viewsets.ModelViewSet):
             qs = qs.filter(court_id=court_id)
         if date:
             qs = qs.filter(date=date)
-        # Optionally filter by expiry
         now = timezone.now()
         qs = qs.filter(
             models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now))
@@ -209,7 +201,6 @@ class DynamicPricingViewSet(viewsets.ModelViewSet):
 class ReportViewSet(viewsets.ModelViewSet):
     queryset = Report.objects.all()
     serializer_class = ReportSerializer
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.action in ["destroy", "update", "partial_update"]:
