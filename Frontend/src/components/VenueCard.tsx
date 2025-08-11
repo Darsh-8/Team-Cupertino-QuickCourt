@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { MapPin, Star, Heart, Wifi, Car, Snowflake, Coffee, Dumbbell, Waves } from 'lucide-react';
 
 interface VenueCardProps {
@@ -42,10 +41,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
   amenities
 }) => {
   return (
-    <Link 
-      to={`/venue/1`} 
-      className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 h-[400px] w-[320px] flex-shrink-0 block"
-    >
+    <div className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 h-[400px] w-[320px] flex-shrink-0">
       <div className="relative overflow-hidden">
         <img
           src={image}
@@ -94,7 +90,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
           ))}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

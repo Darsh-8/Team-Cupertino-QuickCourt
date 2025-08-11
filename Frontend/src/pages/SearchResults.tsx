@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import { 
   Filter, 
   MapPin, 
@@ -39,7 +37,6 @@ interface Venue {
 }
 
 const SearchResults = () => {
-  const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState('recommended');
@@ -56,11 +53,8 @@ const SearchResults = () => {
     priceRange: [0, 5000],
     radius: 10,
     amenities: [] as string[],
-    rating: 0,
-    searchQuery: searchParams.get('q') || ''
+    rating: 0
   });
-
-  const [filteredVenues, setFilteredVenues] = useState<Venue[]>([]);
 
   const venues: Venue[] = [
     {
@@ -167,131 +161,6 @@ const SearchResults = () => {
     }
   ];
 
-  // Filter venues based on current filters
-  useEffect(() => {
-    let filtered = [...venues];
-
-    // Search query filter
-    if (filters.searchQuery) {
-      const query = filters.searchQuery.toLowerCase();
-      filtered = filtered.filter(venue => 
-        venue.name.toLowerCase().includes(query) ||
-        venue.location.toLowerCase().includes(query) ||
-        venue.sports.some(sport => sport.toLowerCase().includes(query))
-      );
-    }
-
-    // Sports filter
-    if (filters.sports.length > 0) {
-      filtered = filtered.filter(venue =>
-        filters.sports.some(sport => venue.sports.includes(sport))
-      );
-    }
-
-    // Price range filter
-    filtered = filtered.filter(venue =>
-      venue.price >= filters.priceRange[0] && venue.price <= filters.priceRange[1]
-    );
-
-    // Amenities filter
-    if (filters.amenities.length > 0) {
-      filtered = filtered.filter(venue =>
-        filters.amenities.every(amenity => venue.amenities.includes(amenity))
-      );
-    }
-
-    // Rating filter
-    if (filters.rating > 0) {
-      filtered = filtered.filter(venue => venue.rating >= filters.rating);
-    }
-
-    // Sort venues
-    switch (sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'distance':
-        // For demo purposes, sort by distance string
-        filtered.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
-        break;
-      default:
-        // Keep recommended order
-        break;
-    }
-
-    setFilteredVenues(filtered);
-  }, [filters, sortBy]);
-
-  const handleSportFilter = (sport: string, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      sports: checked 
-        ? [...prev.sports, sport]
-        : prev.sports.filter(s => s !== sport)
-    }));
-  };
-
-  const handleAmenityFilter = (amenity: string, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      amenities: checked 
-        ? [...prev.amenities, amenity]
-        : prev.amenities.filter(a => a !== amenity)
-    }));
-  };
-
-  const handlePriceRangeFilter = (range: string) => {
-    const priceRanges: { [key: string]: [number, number] } = {
-      'under-500': [0, 500],
-      '500-1000': [500, 1000],
-      '1000-2000': [1000, 2000],
-      'above-2000': [2000, 10000]
-    };
-    
-    setFilters(prev => ({
-      ...prev,
-      priceRange: priceRanges[range] || [0, 5000]
-    }));
-  };
-
-  const handleDistanceFilter = (distance: string) => {
-    const distanceMap: { [key: string]: number } = {
-      '2km': 2,
-      '5km': 5,
-      '10km': 10,
-      '20km': 20
-    };
-    
-    setFilters(prev => ({
-      ...prev,
-      radius: distanceMap[distance] || 10
-    }));
-  };
-
-  const handleRatingFilter = (rating: number) => {
-    setFilters(prev => ({
-      ...prev,
-      rating
-    }));
-  };
-
-  const clearAllFilters = () => {
-    setFilters({
-      sports: [],
-      priceRange: [0, 5000],
-      radius: 10,
-      amenities: [],
-      rating: 0,
-      searchQuery: searchParams.get('q') || ''
-    });
-  };
-
   const toggleFilter = (section: keyof typeof expandedFilters) => {
     setExpandedFilters(prev => ({
       ...prev,
@@ -320,10 +189,7 @@ const SearchResults = () => {
     const [isLiked, setIsLiked] = useState(false);
 
     return (
-      <Link 
-        to={`/venue/${venue.id}`}
-        className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group block"
-      >
+      <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group">
         {/* Image Carousel */}
         <div className="relative h-64 overflow-hidden">
           <img
@@ -427,7 +293,7 @@ const SearchResults = () => {
             </button>
           </div>
         </div>
-      </Link>
+      </div>
     );
   };
 
@@ -439,7 +305,7 @@ const SearchResults = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-lg font-semibold text-gray-900">
-                {filteredVenues.length} venues found
+                {venues.length} venues found
               </h1>
               <button
                 onClick={() => setShowFilters(!showFilters)}
@@ -527,8 +393,6 @@ const SearchResults = () => {
                         <label key={sport} className="flex items-center space-x-2">
                           <input
                             type="checkbox"
-                            checked={filters.sports.includes(sport)}
-                            onChange={(e) => handleSportFilter(sport, e.target.checked)}
                             className="rounded border-gray-300 text-rose-500 focus:ring-rose-500"
                           />
                           <span className="text-sm text-gray-700">{sport}</span>
@@ -563,26 +427,14 @@ const SearchResults = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        {[
-                          { label: 'Under ₹500', value: 'under-500' },
-                          { label: '₹500 - ₹1000', value: '500-1000' },
-                          { label: '₹1000 - ₹2000', value: '1000-2000' },
-                          { label: 'Above ₹2000', value: 'above-2000' }
-                        ].map((range) => (
-                          <label key={range.value} className="flex items-center space-x-2">
+                        {['Under ₹500', '₹500 - ₹1000', '₹1000 - ₹2000', 'Above ₹2000'].map((range) => (
+                          <label key={range} className="flex items-center space-x-2">
                             <input
                               type="radio"
                               name="priceRange"
-                              checked={
-                                (range.value === 'under-500' && filters.priceRange[0] === 0 && filters.priceRange[1] === 500) ||
-                                (range.value === '500-1000' && filters.priceRange[0] === 500 && filters.priceRange[1] === 1000) ||
-                                (range.value === '1000-2000' && filters.priceRange[0] === 1000 && filters.priceRange[1] === 2000) ||
-                                (range.value === 'above-2000' && filters.priceRange[0] === 2000 && filters.priceRange[1] === 10000)
-                              }
-                              onChange={() => handlePriceRangeFilter(range.value)}
                               className="text-rose-500 focus:ring-rose-500"
                             />
-                            <span className="text-sm text-gray-700">{range.label}</span>
+                            <span className="text-sm text-gray-700">{range}</span>
                           </label>
                         ))}
                       </div>
@@ -601,26 +453,14 @@ const SearchResults = () => {
                   </button>
                   {expandedFilters.location && (
                     <div className="mt-3 space-y-2">
-                      {[
-                        { label: 'Within 2 km', value: '2km' },
-                        { label: 'Within 5 km', value: '5km' },
-                        { label: 'Within 10 km', value: '10km' },
-                        { label: 'Within 20 km', value: '20km' }
-                      ].map((distance) => (
-                        <label key={distance.value} className="flex items-center space-x-2">
+                      {['Within 2 km', 'Within 5 km', 'Within 10 km', 'Within 20 km'].map((distance) => (
+                        <label key={distance} className="flex items-center space-x-2">
                           <input
                             type="radio"
                             name="distance"
-                            checked={
-                              (distance.value === '2km' && filters.radius === 2) ||
-                              (distance.value === '5km' && filters.radius === 5) ||
-                              (distance.value === '10km' && filters.radius === 10) ||
-                              (distance.value === '20km' && filters.radius === 20)
-                            }
-                            onChange={() => handleDistanceFilter(distance.value)}
                             className="text-rose-500 focus:ring-rose-500"
                           />
-                          <span className="text-sm text-gray-700">{distance.label}</span>
+                          <span className="text-sm text-gray-700">{distance}</span>
                         </label>
                       ))}
                     </div>
@@ -642,8 +482,6 @@ const SearchResults = () => {
                         <label key={amenity} className="flex items-center space-x-2">
                           <input
                             type="checkbox"
-                            checked={filters.amenities.includes(amenity)}
-                            onChange={(e) => handleAmenityFilter(amenity, e.target.checked)}
                             className="rounded border-gray-300 text-rose-500 focus:ring-rose-500"
                           />
                           <span className="text-sm text-gray-700">{amenity}</span>
@@ -669,8 +507,6 @@ const SearchResults = () => {
                           <input
                             type="radio"
                             name="rating"
-                            checked={filters.rating === rating}
-                            onChange={() => handleRatingFilter(rating)}
                             className="text-rose-500 focus:ring-rose-500"
                           />
                           <div className="flex items-center space-x-1">
@@ -684,10 +520,7 @@ const SearchResults = () => {
                 </div>
 
                 {/* Clear Filters */}
-                <button 
-                  onClick={clearAllFilters}
-                  className="w-full py-2 text-rose-500 hover:text-rose-600 font-medium text-sm border border-rose-500 rounded-lg hover:bg-rose-50 transition-colors"
-                >
+                <button className="w-full py-2 text-rose-500 hover:text-rose-600 font-medium text-sm border border-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
                   Clear all filters
                 </button>
               </div>
@@ -706,7 +539,7 @@ const SearchResults = () => {
           <div className="flex-1">
             {viewMode === 'grid' && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredVenues.map((venue) => (
+                {venues.map((venue) => (
                   <VenueCard key={venue.id} venue={venue} />
                 ))}
               </div>
@@ -714,7 +547,7 @@ const SearchResults = () => {
 
             {viewMode === 'list' && (
               <div className="space-y-4">
-                {filteredVenues.map((venue) => (
+                {venues.map((venue) => (
                   <div key={venue.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
                     <div className="flex gap-6">
                       <img
@@ -755,25 +588,6 @@ const SearchResults = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-
-            {/* No Results State */}
-            {filteredVenues.length === 0 && (
-              <div className="text-center py-16">
-                <div className="text-gray-400 mb-4">
-                  <Search className="w-16 h-16 mx-auto" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No venues found</h3>
-                <p className="text-gray-600 mb-4">
-                  Try adjusting your filters or search criteria to find more venues.
-                </p>
-                <button
-                  onClick={clearAllFilters}
-                  className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Clear all filters
-                </button>
               </div>
             )}
 
