@@ -195,8 +195,8 @@ const Register = () => {
       // Set authentication status with default user role
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userEmail', formData.email);
-      localStorage.setItem('userRole', 'user');
-      navigate('/dashboard');
+      localStorage.setItem('userRole', 'customer');
+      navigate('/');
     }, 2000);
   };
 

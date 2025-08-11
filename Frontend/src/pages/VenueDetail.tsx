@@ -38,6 +38,26 @@ const VenueDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const reviewsRef = useRef<HTMLDivElement>(null);
 
+  // Check authentication status
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+
+  const handleBookNow = () => {
+    if (!isAuthenticated) {
+      // Redirect to login if not authenticated
+      navigate('/login');
+      return;
+    }
+    
+    // Proceed with booking if authenticated
+    if (!selectedDate || !selectedTimeSlot || !selectedSport) {
+      alert('Please select date, time, and sport before booking');
+      return;
+    }
+    
+    // Handle booking logic here
+    alert('Booking confirmed!');
+  };
+
   // Mock venue data - in a real app, this would come from an API
   const venue = {
     id: '1',
@@ -544,10 +564,10 @@ const VenueDetail = () => {
                   </div>
                 </div>
                 <button
-                  disabled={!selectedDate || !selectedTimeSlot || !selectedSport}
-                  className="w-full bg-rose-500 hover:bg-rose-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-colors"
+                  onClick={handleBookNow}
+                  className="w-full bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 rounded-lg transition-colors"
                 >
-                  Book Now
+                  {isAuthenticated ? 'Book Now' : 'Login to Book'}
                 </button>
               </div>
 

@@ -747,8 +747,11 @@ const SearchResults = () => {
                             <span className="text-lg font-bold text-gray-900">{venue.price}</span>
                             <span className="text-gray-600 text-sm">/ hour</span>
                           </div>
-                          <button className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                            Book Now
+                          <button 
+                            onClick={handleBookNow}
+                            className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                          >
+                            {isAuthenticated ? 'Book Now' : 'Login to Book'}
                           </button>
                         </div>
                       </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Star, Heart, Wifi, Car, Snowflake, Coffee, Dumbbell, Waves } from 'lucide-react';
 
 interface VenueCardProps {
@@ -41,6 +42,22 @@ const VenueCard: React.FC<VenueCardProps> = ({
   reviewCount,
   amenities
 }) => {
+  const navigate = useNavigate();
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+
+  const handleBookNow = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent Link navigation
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    
+    // Handle booking logic for authenticated users
+    alert('Redirecting to booking...');
+  };
+
   return (
     <Link 
       to={`/venue/1`} 
@@ -93,6 +110,7 @@ const VenueCard: React.FC<VenueCardProps> = ({
             </span>
           ))}
         </div>
+        
       </div>
     </Link>
   );

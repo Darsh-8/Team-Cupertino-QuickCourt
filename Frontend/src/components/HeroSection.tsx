@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapPin, Search, Clock, Users, Plus, Minus, Zap, ChevronDown } from 'lucide-react';
 
 const HeroSection = () => {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('');
   const [playerCount, setPlayerCount] = useState(1);
   const [selectedSport, setSelectedSport] = useState('');
   const [selectedLocation, setSelectedLocation] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+
+  const handleSearch = () => {
+    const searchParams = new URLSearchParams();
+    if (selectedSport) searchParams.set('sport', selectedSport);
+    if (selectedLocation) searchParams.set('location', selectedLocation);
+    if (selectedTime) searchParams.set('time', selectedTime);
+    if (playerCount > 1) searchParams.set('players', playerCount.toString());
+    
+    navigate(`/search?${searchParams.toString()}`);
+  };
 
   return (
     <section className="pt-24 pb-16 bg-white">
@@ -372,7 +384,10 @@ const HeroSection = () => {
               </div>
               
               {/* Search Button */}
-              <button className="bg-rose-500 hover:bg-rose-600 text-white md:p-4 p-4 md:rounded-full rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-rose-500/20 w-full md:w-auto flex items-center justify-center space-x-2">
+              <button 
+                onClick={handleSearch}
+                className="bg-rose-500 hover:bg-rose-600 text-white md:p-4 p-4 md:rounded-full rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-rose-500/20 w-full md:w-auto flex items-center justify-center space-x-2"
+              >
                 <Search className="w-5 h-5" />
                 <span className="md:hidden font-semibold">Search</span>
               </button>

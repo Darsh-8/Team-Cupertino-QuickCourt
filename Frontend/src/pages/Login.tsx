@@ -58,10 +58,10 @@ const Login = () => {
   // Demo credentials
   const demoCredentials = [
     {
-      type: 'Regular User',
-      email: 'demo@quickcourt.com',
-      password: 'demo123',
-      description: 'Standard user account with booking privileges'
+      type: 'Customer',
+      email: 'customer@quickcourt.com',
+      password: 'customer123',
+      description: 'Venue booking customer account'
     },
     {
       type: 'Venue Owner',
@@ -130,10 +130,17 @@ const Login = () => {
       
       // Determine user role based on email
       let userRole = 'user';
-      if (formData.email === 'owner@quickcourt.com') {
+      let redirectPath = '/';
+      
+      if (formData.email === 'customer@quickcourt.com') {
+        userRole = 'customer';
+        redirectPath = '/';
+      } else if (formData.email === 'owner@quickcourt.com') {
         userRole = 'owner';
+        redirectPath = '/owner-dashboard';
       } else if (formData.email === 'admin@quickcourt.com') {
         userRole = 'admin';
+        redirectPath = '/admin-dashboard';
       }
       
       // Set authentication status with role
@@ -142,7 +149,7 @@ const Login = () => {
       localStorage.setItem('userRole', userRole);
       
       // Redirect to dashboard  
-      navigate('/dashboard');
+      navigate(redirectPath);
     }, 2000);
   };
 

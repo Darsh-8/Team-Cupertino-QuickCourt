@@ -2,6 +2,9 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import ProtectedRoute from './components/ProtectedRoute';
+import CustomerProfile from './pages/CustomerProfile';
+import OwnerDashboard from './pages/OwnerDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import HeroSection from './components/HeroSection';
 import VenueShowcase from './components/VenueShowcase';
 import TrendingVenues from './components/TrendingVenues';
@@ -11,7 +14,6 @@ import SearchResults from './pages/SearchResults';
 import VenueDetail from './pages/VenueDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
 
 const AppContent = () => {
   const location = useLocation();
@@ -39,13 +41,28 @@ const AppContent = () => {
             <VenueDetail />
           </ProtectedRoute>
         } />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/dashboard" element={
+        <Route path="/profile" element={
           <ProtectedRoute>
-            <Dashboard />
+            <CustomerProfile />
           </ProtectedRoute>
         } />
+        <Route path="/profile/bookings" element={
+          <ProtectedRoute>
+            <CustomerProfile />
+          </ProtectedRoute>
+        } />
+        <Route path="/owner-dashboard" element={
+          <ProtectedRoute>
+            <OwnerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
       <Footer />
     </div>
