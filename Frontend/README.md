@@ -1,1 +1,0 @@
-# Team-Cupertino-QuickCourt
