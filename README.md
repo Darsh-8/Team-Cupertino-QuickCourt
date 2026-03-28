@@ -1,4 +1,4 @@
-<h1 align="center"> QuickCourt </h1>
+<h1 align="center"> QuickCourt Private </h1>
 <p align="center"> Your Express Lane to Sports Venue Bookings and Management </p>
 
 <p align="center">
